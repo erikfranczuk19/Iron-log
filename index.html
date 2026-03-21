@@ -603,8 +603,23 @@ function initWeek() {
   return w;
 }
 
+function cloneRoutineTemplate() {
+  const template = state.weeks[1];
+  const w = {};
+  DAYS.forEach(d => {
+    w[d] = (template[d] || []).map(ex => ({
+      name: ex.name,
+      sets: ex.sets.map(() => ({ reps: '', weight: '' }))
+    }));
+  });
+  return w;
+}
+
 function ensureWeek(w) {
-  if (!state.weeks[w]) state.weeks[w] = initWeek();
+  if (!state.weeks[w]) {
+    state.weeks[w] = w === 1 ? initWeek() : cloneRoutineTemplate();
+    saveState();
+  }
 }
 
 function getDayExercises() {
