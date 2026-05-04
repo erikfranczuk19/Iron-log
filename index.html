@@ -481,6 +481,27 @@
   }
   .bottom-nav .nav-btn { font-size: 12px; padding: 12px 8px; }
 
+  /* COMPLETE WEEK BTN */
+  .complete-week-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+  .complete-week-btn:active { opacity: 0.85; transform: scale(0.98); }
+
   /* EMPTY STATE */
   .empty-state {
     text-align: center;
@@ -513,6 +534,9 @@
   <div id="exerciseList"></div>
   <button class="add-ex-btn" onclick="addExercise()">
     <span style="font-size:20px">+</span> AGREGAR EJERCICIO
+  </button>
+  <button class="complete-week-btn" onclick="completeWeek()">
+    ✓ COMPLETAR SEMANA
   </button>
 </div>
 
@@ -549,6 +573,7 @@
 <script>
 // ─── STATE ───────────────────────────────────────────────────────
 const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DAY_LABELS = {'Lunes':'PUSH','Martes':'PULL','Miércoles':'PIERNAS','Jueves':'BRAZOS','Viernes':'PIERNAS 2','Sábado':'DESCANSO','Domingo':'DESCANSO'};
 let state = loadState();
 let currentDay = 0;
 let currentWeek = 1;
@@ -560,35 +585,52 @@ function loadState() {
     const s = localStorage.getItem('ironlog');
     if (s) return JSON.parse(s);
   } catch(e){}
-  const mk = (name) => ({ name, sets: [{reps:'',weight:''},{reps:'',weight:''},{reps:'',weight:''}] });
+  const mk = (name, n) => ({ name, sets: Array.from({length:n}, ()=>({reps:'',weight:''})) });
   return { weeks: { 1: {
     'Lunes': [
-      mk('Inclinado mancuernas'), mk('Plano barra'),
-      mk('Remo barra semi abierto'), mk('Jalón al pecho'),
-      mk('Laterales polea'),
-      mk('Tríceps trasnuca'), mk('Curl barra'), mk('Martillo'),
+      // PUSH
+      mk('Press Banca Inclinado', 4),
+      mk('Press Banca Común', 3),
+      mk('Apertura', 4),
+      mk('Vuelos Laterales', 3),
+      mk('Press Militar', 3),
+      mk('Tríceps en Banco', 3),
     ],
     'Martes': [
-      mk('Sentadilla'), mk('Prensa'), mk('Sillón cuádriceps'), mk('Camilla femoral'), mk('Gemelos'),
-      mk('Press militar'), mk('Posteriores en polea'),
+      // PULL
+      mk('Jalón al Pecho', 4),
+      mk('Pullover', 4),
+      mk('Remo Bajo Barra Agarre Abierto', 4),
+      mk('Remo Bajo Agarre Cerrado', 4),
+      mk('Hombro Posterior', 3),
+      mk('Bícep Curl Barra Z', 3),
     ],
     'Miércoles': [
-      mk('Ruedita'), mk('Plancha'), mk('Pallof press'),
+      // PIERNAS
+      mk('Sentadilla', 3),
+      mk('Sillón Cuádriceps', 3),
+      mk('Camilla Femorales', 3),
+      mk('Gemelos', 3),
+      mk('Elevación de Caderas', 3),
     ],
     'Jueves': [
-      mk('Inclinado barra'), mk('Aperturas polea'),
-      mk('Remo mancuerna unilateral'), mk('Pullover'),
-      mk('Bayesian'), mk('Curl barra / Scott'),
-      mk('Tríceps banco inclinado'), mk('Tríceps polea'),
+      // BRAZOS
+      mk('Bayesian', 4),
+      mk('Scott', 3),
+      mk('Tríceps Unilateral', 4),
+      mk('Soga Convencional', 3),
+      mk('Shrug', 3),
+      mk('Vuelos Laterales', 3),
+      mk('Antebrazos', 3),
     ],
     'Viernes': [
-      mk('Peso muerto'), mk('Hip thrust'), mk('Camilla femoral'), mk('Abductores'), mk('Gemelos'),
-      mk('Shrug'), mk('Antebrazo'),
+      // PIERNAS 2
+      mk('Peso Muerto', 3),
+      mk('Camilla Femorales', 3),
+      mk('Sillón Cuádriceps', 3),
+      mk('Gemelos', 3),
     ],
-    'Sábado': [
-      mk('Peso muerto'), mk('Hip thrust'), mk('Camilla femoral'), mk('Abductores'), mk('Gemelos'),
-      mk('Shrug'), mk('Antebrazo'),
-    ],
+    'Sábado': [],
     'Domingo': [],
   }}};
 }
@@ -603,23 +645,8 @@ function initWeek() {
   return w;
 }
 
-function cloneRoutineTemplate() {
-  const template = state.weeks[1];
-  const w = {};
-  DAYS.forEach(d => {
-    w[d] = (template[d] || []).map(ex => ({
-      name: ex.name,
-      sets: ex.sets.map(() => ({ reps: '', weight: '' }))
-    }));
-  });
-  return w;
-}
-
 function ensureWeek(w) {
-  if (!state.weeks[w]) {
-    state.weeks[w] = w === 1 ? initWeek() : cloneRoutineTemplate();
-    saveState();
-  }
+  if (!state.weeks[w]) state.weeks[w] = initWeek();
 }
 
 function getDayExercises() {
@@ -648,7 +675,9 @@ function renderDayChips() {
     chip.onclick = () => { currentDay = i; renderDayChips(); renderExercises(); };
     scroll.appendChild(chip);
   });
-  document.getElementById('sectionLabel').textContent = DAYS[currentDay].toUpperCase();
+  const dayName = DAYS[currentDay];
+  const label = DAY_LABELS[dayName] ? dayName.toUpperCase() + ' — ' + DAY_LABELS[dayName] : dayName.toUpperCase();
+  document.getElementById('sectionLabel').textContent = label;
 }
 
 // ─── EXERCISES ────────────────────────────────────────────────────
@@ -813,6 +842,38 @@ function deleteExercise(idx) {
   getDayExercises().splice(idx, 1);
   saveState();
   renderExercises();
+}
+
+// ─── COMPLETE WEEK ────────────────────────────────────────────────
+function completeWeek() {
+  const nextWeek = currentWeek + 1;
+  ensureWeek(nextWeek);
+
+  // Copy exercises from current week to next, keeping names & set count but clearing values
+  DAYS.forEach(day => {
+    const currExs = state.weeks[currentWeek][day] || [];
+    if (currExs.length && !state.weeks[nextWeek][day].length) {
+      state.weeks[nextWeek][day] = currExs.map(ex => ({
+        name: ex.name,
+        sets: ex.sets.map(() => ({reps:'', weight:''}))
+      }));
+    }
+  });
+
+  saveState();
+  currentWeek = nextWeek;
+  currentDay = 0;
+  document.getElementById('currentWeekBadge').textContent = 'Semana ' + currentWeek;
+  document.getElementById('weekNavTitle').textContent = 'SEMANA ' + currentWeek;
+  renderDayChips();
+  renderExercises();
+
+  // Flash confirmation
+  const btn = document.querySelector('.complete-week-btn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ SEMANA ' + (currentWeek - 1) + ' COMPLETADA!';
+  btn.style.background = '#4caf7a';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2000);
 }
 
 // ─── WEEK VIEW ────────────────────────────────────────────────────
