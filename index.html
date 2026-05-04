@@ -562,6 +562,12 @@
     <div class="chart-title" id="chartTitle">PROGRESO SEMANAL</div>
     <canvas id="progressChart" height="200"></canvas>
   </div>
+  <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;letter-spacing:0.5px;">ZONA DE PELIGRO</div>
+    <button onclick="resetData()" style="width:100%;padding:14px;background:none;border:1px solid var(--accent2);border-radius:var(--radius);color:var(--accent2);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;">
+      🗑 RESETEAR DATOS
+    </button>
+  </div>
 </div>
 
 <div class="bottom-nav">
@@ -583,7 +589,15 @@ let chart = null;
 function loadState() {
   try {
     const s = localStorage.getItem('ironlog');
-    if (s) return JSON.parse(s);
+    if (s) {
+      const parsed = JSON.parse(s);
+      // Migration: clear Sábado and Domingo from all weeks if they have exercises
+      Object.values(parsed.weeks || {}).forEach(week => {
+        if (week['Sábado'] && week['Sábado'].length) week['Sábado'] = [];
+        if (week['Domingo'] && week['Domingo'].length) week['Domingo'] = [];
+      });
+      return parsed;
+    }
   } catch(e){}
   const mk = (name, n) => ({ name, sets: Array.from({length:n}, ()=>({reps:'',weight:''})) });
   return { weeks: { 1: {
@@ -1046,6 +1060,24 @@ function renderChart() {
       }
     }
   });
+}
+
+// ─── RESET ───────────────────────────────────────────────────────
+function resetData() {
+  if (!confirm('¿Seguro? Se borran todos los pesos y repeticiones. La rutina queda cargada.')) return;
+  localStorage.removeItem('ironlog');
+  state = loadState();
+  currentWeek = 1;
+  currentDay = 0;
+  document.getElementById('currentWeekBadge').textContent = 'Semana 1';
+  document.getElementById('weekNavTitle').textContent = 'SEMANA 1';
+  renderDayChips();
+  renderExercises();
+  // Switch back to rutina view
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-rutina').classList.add('active');
+  document.querySelector('.bottom-nav .nav-btn').classList.add('active');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────
