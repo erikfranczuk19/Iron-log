@@ -650,7 +650,10 @@ function loadState() {
 }
 
 function saveState() {
-  try { localStorage.setItem('ironlog', JSON.stringify(state)); } catch(e){}
+  try {
+    localStorage.setItem('ironlog', JSON.stringify(state));
+    localStorage.setItem('ironlog_pos', JSON.stringify({week: currentWeek, day: currentDay}));
+  } catch(e){}
 }
 
 function initWeek() {
@@ -666,6 +669,28 @@ function ensureWeek(w) {
 function getDayExercises() {
   ensureWeek(currentWeek);
   return state.weeks[currentWeek][DAYS[currentDay]];
+}
+
+// Sync structure (names + set count) of current day to all future weeks, preserving their weights/reps
+function syncStructureToFutureWeeks() {
+  const day = DAYS[currentDay];
+  const source = state.weeks[currentWeek][day];
+  const allWeeks = Object.keys(state.weeks).map(Number).sort((a,b)=>a-b);
+  allWeeks.forEach(w => {
+    if (w <= currentWeek) return;
+    const target = state.weeks[w][day];
+    // Rebuild future week's day matching source structure, keeping existing values where possible
+    state.weeks[w][day] = source.map((ex, i) => {
+      const existing = target[i];
+      return {
+        name: ex.name,
+        sets: ex.sets.map((_, si) => ({
+          reps: existing && existing.sets[si] ? existing.sets[si].reps : '',
+          weight: existing && existing.sets[si] ? existing.sets[si].weight : ''
+        }))
+      };
+    });
+  });
 }
 
 // ─── NAV ──────────────────────────────────────────────────────────
@@ -814,6 +839,7 @@ function toggleExpand(card) {
 
 function updateExName(idx, val) {
   getDayExercises()[idx].name = val;
+  syncStructureToFutureWeeks();
   saveState();
 }
 
@@ -824,6 +850,7 @@ function updateSet(exIdx, setIdx, field, val) {
 
 function addSet(exIdx) {
   getDayExercises()[exIdx].sets.push({reps:'',weight:''});
+  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
   // Re-expand
@@ -840,6 +867,7 @@ function addSet(exIdx) {
 function deleteSet(exIdx, setIdx) {
   const sets = getDayExercises()[exIdx].sets;
   if (sets.length > 1) sets.splice(setIdx, 1);
+  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
   setTimeout(() => {
@@ -854,6 +882,7 @@ function deleteSet(exIdx, setIdx) {
 
 function deleteExercise(idx) {
   getDayExercises().splice(idx, 1);
+  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
 }
@@ -1066,6 +1095,7 @@ function renderChart() {
 function resetData() {
   if (!confirm('¿Seguro? Se borran todos los pesos y repeticiones. La rutina queda cargada.')) return;
   localStorage.removeItem('ironlog');
+  localStorage.removeItem('ironlog_pos');
   state = loadState();
   currentWeek = 1;
   currentDay = 0;
@@ -1081,7 +1111,14 @@ function resetData() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────
-ensureWeek(1);
+try {
+  const pos = JSON.parse(localStorage.getItem('ironlog_pos') || '{}');
+  if (pos.week) { currentWeek = pos.week; }
+  if (pos.day !== undefined) { currentDay = pos.day; }
+} catch(e){}
+document.getElementById('currentWeekBadge').textContent = 'Semana ' + currentWeek;
+document.getElementById('weekNavTitle').textContent = 'SEMANA ' + currentWeek;
+ensureWeek(currentWeek);
 renderDayChips();
 renderExercises();
 </script>
