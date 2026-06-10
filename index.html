@@ -654,6 +654,10 @@ function saveState() {
     localStorage.setItem('ironlog', JSON.stringify(state));
     localStorage.setItem('ironlog_pos', JSON.stringify({week: currentWeek, day: currentDay}));
   } catch(e){}
+  // Also store in URL hash as fallback (works in standalone mode)
+  try {
+    history.replaceState(null, '', '#w' + currentWeek + 'd' + currentDay);
+  } catch(e){}
 }
 
 function initWeek() {
@@ -1112,9 +1116,18 @@ function resetData() {
 
 // ─── INIT ─────────────────────────────────────────────────────────
 try {
-  const pos = JSON.parse(localStorage.getItem('ironlog_pos') || '{}');
-  if (pos.week) { currentWeek = pos.week; }
-  if (pos.day !== undefined) { currentDay = pos.day; }
+  // Try URL hash first (most reliable in standalone/PWA mode)
+  const hash = location.hash; // e.g. #w3d2
+  const hashMatch = hash.match(/#w(\d+)d(\d+)/);
+  if (hashMatch) {
+    currentWeek = parseInt(hashMatch[1]);
+    currentDay  = parseInt(hashMatch[2]);
+  } else {
+    // Fallback to localStorage
+    const pos = JSON.parse(localStorage.getItem('ironlog_pos') || '{}');
+    if (pos.week) { currentWeek = pos.week; }
+    if (pos.day !== undefined) { currentDay = pos.day; }
+  }
 } catch(e){}
 document.getElementById('currentWeekBadge').textContent = 'Semana ' + currentWeek;
 document.getElementById('weekNavTitle').textContent = 'SEMANA ' + currentWeek;
