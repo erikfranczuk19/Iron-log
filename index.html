@@ -481,27 +481,6 @@
   }
   .bottom-nav .nav-btn { font-size: 12px; padding: 12px 8px; }
 
-  /* COMPLETE WEEK BTN */
-  .complete-week-btn {
-    width: 100%;
-    padding: 16px;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius);
-    color: #000;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 2px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-    margin-top: 12px;
-  }
-  .complete-week-btn:active { opacity: 0.85; transform: scale(0.98); }
-
   /* EMPTY STATE */
   .empty-state {
     text-align: center;
@@ -535,9 +514,6 @@
   <button class="add-ex-btn" onclick="addExercise()">
     <span style="font-size:20px">+</span> AGREGAR EJERCICIO
   </button>
-  <button class="complete-week-btn" onclick="completeWeek()">
-    ✓ COMPLETAR SEMANA
-  </button>
 </div>
 
 <div id="view-semana" class="view">
@@ -562,12 +538,6 @@
     <div class="chart-title" id="chartTitle">PROGRESO SEMANAL</div>
     <canvas id="progressChart" height="200"></canvas>
   </div>
-  <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;letter-spacing:0.5px;">ZONA DE PELIGRO</div>
-    <button onclick="resetData()" style="width:100%;padding:14px;background:none;border:1px solid var(--accent2);border-radius:var(--radius);color:var(--accent2);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;">
-      🗑 RESETEAR DATOS
-    </button>
-  </div>
 </div>
 
 <div class="bottom-nav">
@@ -579,7 +549,6 @@
 <script>
 // ─── STATE ───────────────────────────────────────────────────────
 const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-const DAY_LABELS = {'Lunes':'PUSH','Martes':'PULL','Miércoles':'PIERNAS','Jueves':'BRAZOS','Viernes':'PIERNAS 2','Sábado':'DESCANSO','Domingo':'DESCANSO'};
 let state = loadState();
 let currentDay = 0;
 let currentWeek = 1;
@@ -589,75 +558,36 @@ let chart = null;
 function loadState() {
   try {
     const s = localStorage.getItem('ironlog');
-    if (s) {
-      const parsed = JSON.parse(s);
-      // Migration: clear Sábado and Domingo from all weeks if they have exercises
-      Object.values(parsed.weeks || {}).forEach(week => {
-        if (week['Sábado'] && week['Sábado'].length) week['Sábado'] = [];
-        if (week['Domingo'] && week['Domingo'].length) week['Domingo'] = [];
-      });
-      return parsed;
-    }
+    if (s) return JSON.parse(s);
   } catch(e){}
-  const mk = (name, n) => ({ name, sets: Array.from({length:n}, ()=>({reps:'',weight:''})) });
+  const mk = (name) => ({ name, sets: [{reps:'',weight:''},{reps:'',weight:''},{reps:'',weight:''}] });
   return { weeks: { 1: {
-    'Lunes': [
-      // PUSH
-      mk('Press Banca Inclinado', 4),
-      mk('Press Banca Común', 3),
-      mk('Apertura', 4),
-      mk('Vuelos Laterales', 3),
-      mk('Press Militar', 3),
-      mk('Tríceps en Banco', 3),
-    ],
+    'Lunes': [],
     'Martes': [
-      // PULL
-      mk('Jalón al Pecho', 4),
-      mk('Pullover', 4),
-      mk('Remo Bajo Barra Agarre Abierto', 4),
-      mk('Remo Bajo Agarre Cerrado', 4),
-      mk('Hombro Posterior', 3),
-      mk('Bícep Curl Barra Z', 3),
+      mk('Inclinado con barra'), mk('Plano con mancuerna'), mk('Aperturas con mancuernas'),
+      mk('Curl de bíceps con barra'), mk('Martillo unilateral apoyado en banco'),
+      mk('Vuelos laterales'),
     ],
     'Miércoles': [
-      // PIERNAS
-      mk('Sentadilla', 3),
-      mk('Sillón Cuádriceps', 3),
-      mk('Camilla Femorales', 3),
-      mk('Gemelos', 3),
-      mk('Elevación de Caderas', 3),
+      mk('Sillón de cuádriceps'), mk('Sentadilla búlgara'), mk('Camilla de femorales'),
+      mk('Peso muerto'), mk('Gemelos parado'),
     ],
     'Jueves': [
-      // BRAZOS
-      mk('Bayesian', 4),
-      mk('Scott', 3),
-      mk('Tríceps Unilateral', 4),
-      mk('Soga Convencional', 3),
-      mk('Shrug', 3),
-      mk('Vuelos Laterales', 3),
-      mk('Antebrazos', 3),
+      mk('Remo con barra en inclinado'), mk('Remo unilateral con mancuerna'), mk('Pullover'),
+      mk('Press francés con barra'), mk('Tríceps con mancuerna sentado'),
     ],
-    'Viernes': [
-      // PIERNAS 2
-      mk('Peso Muerto', 3),
-      mk('Camilla Femorales', 3),
-      mk('Sillón Cuádriceps', 3),
-      mk('Gemelos', 3),
+    'Viernes': [],
+    'Sábado': [
+      mk('Posteriores'), mk('Banco inclinado con mancuernas'), mk('Press militar'),
+      mk('Pullover'), mk('Encogimiento trapecios'), mk('Antebrazos con barra'),
+      mk('Vuelos laterales'),
     ],
-    'Sábado': [],
     'Domingo': [],
   }}};
 }
 
 function saveState() {
-  try {
-    localStorage.setItem('ironlog', JSON.stringify(state));
-    localStorage.setItem('ironlog_pos', JSON.stringify({week: currentWeek, day: currentDay}));
-  } catch(e){}
-  // Also store in URL hash as fallback (works in standalone mode)
-  try {
-    history.replaceState(null, '', '#w' + currentWeek + 'd' + currentDay);
-  } catch(e){}
+  try { localStorage.setItem('ironlog', JSON.stringify(state)); } catch(e){}
 }
 
 function initWeek() {
@@ -666,35 +596,28 @@ function initWeek() {
   return w;
 }
 
+function cloneRoutineTemplate() {
+  const template = state.weeks[1];
+  const w = {};
+  DAYS.forEach(d => {
+    w[d] = (template[d] || []).map(ex => ({
+      name: ex.name,
+      sets: ex.sets.map(() => ({ reps: '', weight: '' }))
+    }));
+  });
+  return w;
+}
+
 function ensureWeek(w) {
-  if (!state.weeks[w]) state.weeks[w] = initWeek();
+  if (!state.weeks[w]) {
+    state.weeks[w] = w === 1 ? initWeek() : cloneRoutineTemplate();
+    saveState();
+  }
 }
 
 function getDayExercises() {
   ensureWeek(currentWeek);
   return state.weeks[currentWeek][DAYS[currentDay]];
-}
-
-// Sync structure (names + set count) of current day to all future weeks, preserving their weights/reps
-function syncStructureToFutureWeeks() {
-  const day = DAYS[currentDay];
-  const source = state.weeks[currentWeek][day];
-  const allWeeks = Object.keys(state.weeks).map(Number).sort((a,b)=>a-b);
-  allWeeks.forEach(w => {
-    if (w <= currentWeek) return;
-    const target = state.weeks[w][day];
-    // Rebuild future week's day matching source structure, keeping existing values where possible
-    state.weeks[w][day] = source.map((ex, i) => {
-      const existing = target[i];
-      return {
-        name: ex.name,
-        sets: ex.sets.map((_, si) => ({
-          reps: existing && existing.sets[si] ? existing.sets[si].reps : '',
-          weight: existing && existing.sets[si] ? existing.sets[si].weight : ''
-        }))
-      };
-    });
-  });
 }
 
 // ─── NAV ──────────────────────────────────────────────────────────
@@ -718,9 +641,7 @@ function renderDayChips() {
     chip.onclick = () => { currentDay = i; renderDayChips(); renderExercises(); };
     scroll.appendChild(chip);
   });
-  const dayName = DAYS[currentDay];
-  const label = DAY_LABELS[dayName] ? dayName.toUpperCase() + ' — ' + DAY_LABELS[dayName] : dayName.toUpperCase();
-  document.getElementById('sectionLabel').textContent = label;
+  document.getElementById('sectionLabel').textContent = DAYS[currentDay].toUpperCase();
 }
 
 // ─── EXERCISES ────────────────────────────────────────────────────
@@ -843,7 +764,6 @@ function toggleExpand(card) {
 
 function updateExName(idx, val) {
   getDayExercises()[idx].name = val;
-  syncStructureToFutureWeeks();
   saveState();
 }
 
@@ -854,7 +774,6 @@ function updateSet(exIdx, setIdx, field, val) {
 
 function addSet(exIdx) {
   getDayExercises()[exIdx].sets.push({reps:'',weight:''});
-  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
   // Re-expand
@@ -871,7 +790,6 @@ function addSet(exIdx) {
 function deleteSet(exIdx, setIdx) {
   const sets = getDayExercises()[exIdx].sets;
   if (sets.length > 1) sets.splice(setIdx, 1);
-  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
   setTimeout(() => {
@@ -886,41 +804,8 @@ function deleteSet(exIdx, setIdx) {
 
 function deleteExercise(idx) {
   getDayExercises().splice(idx, 1);
-  syncStructureToFutureWeeks();
   saveState();
   renderExercises();
-}
-
-// ─── COMPLETE WEEK ────────────────────────────────────────────────
-function completeWeek() {
-  const nextWeek = currentWeek + 1;
-  ensureWeek(nextWeek);
-
-  // Copy exercises from current week to next, keeping names & set count but clearing values
-  DAYS.forEach(day => {
-    const currExs = state.weeks[currentWeek][day] || [];
-    if (currExs.length && !state.weeks[nextWeek][day].length) {
-      state.weeks[nextWeek][day] = currExs.map(ex => ({
-        name: ex.name,
-        sets: ex.sets.map(() => ({reps:'', weight:''}))
-      }));
-    }
-  });
-
-  saveState();
-  currentWeek = nextWeek;
-  currentDay = 0;
-  document.getElementById('currentWeekBadge').textContent = 'Semana ' + currentWeek;
-  document.getElementById('weekNavTitle').textContent = 'SEMANA ' + currentWeek;
-  renderDayChips();
-  renderExercises();
-
-  // Flash confirmation
-  const btn = document.querySelector('.complete-week-btn');
-  const orig = btn.innerHTML;
-  btn.innerHTML = '✓ SEMANA ' + (currentWeek - 1) + ' COMPLETADA!';
-  btn.style.background = '#4caf7a';
-  setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2000);
 }
 
 // ─── WEEK VIEW ────────────────────────────────────────────────────
@@ -1095,43 +980,8 @@ function renderChart() {
   });
 }
 
-// ─── RESET ───────────────────────────────────────────────────────
-function resetData() {
-  if (!confirm('¿Seguro? Se borran todos los pesos y repeticiones. La rutina queda cargada.')) return;
-  localStorage.removeItem('ironlog');
-  localStorage.removeItem('ironlog_pos');
-  state = loadState();
-  currentWeek = 1;
-  currentDay = 0;
-  document.getElementById('currentWeekBadge').textContent = 'Semana 1';
-  document.getElementById('weekNavTitle').textContent = 'SEMANA 1';
-  renderDayChips();
-  renderExercises();
-  // Switch back to rutina view
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-rutina').classList.add('active');
-  document.querySelector('.bottom-nav .nav-btn').classList.add('active');
-}
-
 // ─── INIT ─────────────────────────────────────────────────────────
-try {
-  // Try URL hash first (most reliable in standalone/PWA mode)
-  const hash = location.hash; // e.g. #w3d2
-  const hashMatch = hash.match(/#w(\d+)d(\d+)/);
-  if (hashMatch) {
-    currentWeek = parseInt(hashMatch[1]);
-    currentDay  = parseInt(hashMatch[2]);
-  } else {
-    // Fallback to localStorage
-    const pos = JSON.parse(localStorage.getItem('ironlog_pos') || '{}');
-    if (pos.week) { currentWeek = pos.week; }
-    if (pos.day !== undefined) { currentDay = pos.day; }
-  }
-} catch(e){}
-document.getElementById('currentWeekBadge').textContent = 'Semana ' + currentWeek;
-document.getElementById('weekNavTitle').textContent = 'SEMANA ' + currentWeek;
-ensureWeek(currentWeek);
+ensureWeek(1);
 renderDayChips();
 renderExercises();
 </script>
